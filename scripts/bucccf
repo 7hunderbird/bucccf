@@ -51,11 +51,14 @@ EOF
 
     bucc up --cpi virtualbox --lite
 
+    popd 
 }
 
 configure_bosh_and_cf () {
 
-    pushd $REPO_BUCC/state
+    pushd $REPO_BUCC
+    
+    source .envrc
 
     bosh -n update-runtime-config $REPO_BOSH/runtime-configs/dns.yml --name dns
 
@@ -76,6 +79,10 @@ configure_bosh_and_cf () {
 
 deploy_cf () {
 
+    pushd $REPO_BUCC
+    
+    source .envrc
+
     pushd $REPO_BUCC/state
 
     # Uses the 10.244.0.34 ip from cf-deployment bosh-lite.yml operator file
@@ -93,7 +100,9 @@ deploy_cf () {
 
 login_cf () {
 
-    source $REPO_BUCC/.envrc
+    pushd $REPO_BUCC
+    
+    source .envrc
 
     sleep 5
 
