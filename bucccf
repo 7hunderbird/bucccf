@@ -1,0 +1,118 @@
+#!/bin/bash
+
+# set -eux
+
+pushd () {
+    command pushd "$@" > /dev/null
+}
+
+popd () {
+    command popd "$@" > /dev/null
+}
+
+setup_repos () {
+
+    rm -rf src/*
+    pushd src
+    git clone https://github.com/starkandwayne/bucc.git
+    git clone https://github.com/cloudfoundry/bosh-deployment.git
+    git clone https://github.com/cloudfoundry/cf-deployment.git
+    popd
+
+    REPO_BUCC=$PWD/src/bucc
+    REPO_BOSH=$PWD/src/bosh-deployment
+    REPO_CF=$PWD/src/cf-deployment
+
+}
+
+
+start_bucc () {
+    
+    pushd $REPO_BUCC
+
+    source .envrc
+
+cat << EOF >> vars.yml
+director_name: bucc
+# alias: bucc
+internal_cidr: 192.168.50.0/24
+internal_gw: 192.168.50.1
+internal_ip: 192.168.50.6
+outbound_network_name: NatNetwork
+vm_cpus: 6
+vm_memory: 10240
+vm_ephemeral_disk: 40960
+
+# flag: --remote
+vbox_host:
+vbox_username:
+vbox_ssh_private_key:
+EOF
+
+    bucc up --cpi virtualbox --lite
+
+}
+
+configure_bosh_and_cf () {
+
+    pushd $REPO_BUCC/state
+
+    bosh -n update-runtime-config $REPO_BOSH/runtime-configs/dns.yml --name dns
+
+    bosh -n delete-config --type runtime --name default
+
+    bosh -n ucc $REPO_CF/iaas-support/bosh-lite/cloud-config.yml
+
+    STEMCELL_VERSION=$(bosh interpolate $REPO_CF/cf-deployment.yml --path /stemcells/alias=default/version)
+    CODE_NAME=$(bosh interpolate $REPO_CF/cf-deployment.yml --path /stemcells/0/os)
+
+    bosh \
+    upload-stemcell \
+    https://bosh.io/d/stemcells/bosh-warden-boshlite-${CODE_NAME}-go_agent?v=${STEMCELL_VERSION}
+
+    popd
+
+}
+
+deploy_cf () {
+
+    pushd $REPO_BUCC/state
+
+    # Uses the 10.244.0.34 ip from cf-deployment bosh-lite.yml operator file
+    # https://github.com/cloudfoundry/cf-deployment/blob/master/operations/bosh-lite.yml
+
+    bosh -n -d cf deploy $REPO_CF/cf-deployment.yml \
+        --vars-store cf-deployment-vars.yml \
+        -v "system_domain=sys.10.244.0.34.netip.cc" \
+        -o $REPO_CF/operations/bosh-lite.yml \
+        -o $REPO_CF/operations/use-compiled-releases.yml
+
+    popd
+
+}
+
+login_cf () {
+
+    source $REPO_BUCC/.envrc
+
+    sleep 5
+
+    pushd $REPO_BUCC/state
+
+    CF_ADMIN_PASSWORD=$(bosh interpolate cf-deployment-vars.yml --path /cf_admin_password)
+
+    cf login --skip-ssl-validation -a https://api.sys.10.244.0.34.netip.cc -u admin -p $CF_ADMIN_PASSWORD
+
+    cf create-space default -o system
+
+    cf target -o "system" -s "default"
+
+    popd
+
+}
+
+setup_repos
+start_bucc
+configure_bosh_and_cf
+deploy_cf
+login_cf
