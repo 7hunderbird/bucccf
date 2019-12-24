@@ -1,0 +1,11 @@
+#!/bin/bash
+
+REPO_BUCC=$PWD/src/bucc
+REPO_BOSH=$PWD/src/bosh-deployment
+REPO_CF=$PWD/src/cf-deployment
+
+VM_UUID=$(cat $REPO_BUCC/state/state.json | jq -r .current_vm_cid)
+
+VBoxManage controlvm $VM_UUID savestate
+
+sudo route delete -net 10.244.0.0/16 192.168.50.6

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+REPO_BUCC=$PWD/src/bucc
+REPO_BOSH=$PWD/src/bosh-deployment
+REPO_CF=$PWD/src/cf-deployment
+
+   VM_UUID=$(cat $REPO_BUCC/state/state.json | jq -r .current_vm_cid)
+VM_RUNNING=$(VBoxManage list runningvms | grep vm | awk '{print $1}' | tr -d '"')
+
+if [ "$VM_UUID" == "$VM_RUNNING" ]; then
+    echo "BOSH vm is currently running."
+else
+    VBoxManage startvm $VM_UUID --type headless
+fi
+
+pushd $REPO_BUCC
+
+source .envrc
