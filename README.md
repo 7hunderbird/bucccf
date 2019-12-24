@@ -10,4 +10,9 @@ cd bucccf
 
 This will download the `bucc`, `bosh-deployment`, and `cf-deployment` repositories to the `src` folder in this project.
 
+Required:
+
+* [Virtualbox](https://www.virtualbox.org/wiki/Downloads)
+* [bosh-cli](https://bosh.io/docs/cli-v2-install/)
+
 [Next](docs/01-bucc.md)

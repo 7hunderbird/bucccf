@@ -3,10 +3,10 @@
 Now that we've got a running Cloud Foundry we can run our report.
 
 ```
-./script/report
+./script/report | sort
 ```
 
-This will output what certificates the current Cloud Foundry is using.
+This will output what certificates the current Cloud Foundry is using, sorted by SHA256 fingerprint, Common Name, and `/path/ca`.
 
 Requires:
 

@@ -8,25 +8,9 @@ popd () {
     command popd "$@" > /dev/null
 }
 
-# rm -rf src/*
-
-# pushd src
-
-# git clone https://github.com/starkandwayne/bucc.git
-# git clone https://github.com/cloudfoundry/bosh-deployment.git
-# git clone https://github.com/cloudfoundry/cf-deployment.git
-
-# popd
-
 REPO_BUCC=$PWD/src/bucc
 REPO_BOSH=$PWD/src/bosh-deployment
 REPO_CF=$PWD/src/cf-deployment
-
-# echo $REPO_BUCC
-# echo $REPO_BOSH
-# echo $REPO_CF
-
-# exit
 
 pushd $REPO_BUCC
 
@@ -35,8 +19,18 @@ source .envrc
 # create a jq-path alias
 # to do this we need to set the "expand_aliases" shell option
 # and then define the alias
+
 shopt -s expand_aliases
 alias jq-path="jq '[path(..)|map(if type==\"number\" then \"[]\" else tostring end)|join(\".\")|split(\".[]\")|join(\"[]\")]|unique|map(\".\"+.)|.[]'"
+
+# let's create a list from the `state/cf-deployment-vars.yml` file.
+# use yq to convert to json
+# structure it for jq
+# use jq-path to get a map of paths
+# filter match '.ca"' values
+# filter keep everything but '_ca' values
+# remove double quotes
+# substitute "[.]" with "/" to `/path/ca`
 
 certificate_authorities=$(yq read state/cf-deployment-vars.yml -j | jq | jq-path | grep -e '.ca"' | grep -E -v -- '_ca' | sed 's/"//g' | awk '{ gsub("[.]","/",$0); print $0 }' )
 
@@ -46,3 +40,5 @@ do
     fingerprint=$(openssl x509 -noout -fingerprint -sha256 -inform pem -in <(bosh interpolate state/cf-deployment-vars.yml --path $certificate_authority))
     echo $fingerprint $common_name $certificate_authority
 done
+
+popd
