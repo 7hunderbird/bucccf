@@ -1,2 +1,4 @@
-src/*
+src/bucc
+src/bosh-deployment
+src/cf-deployment
 .DS_Store
