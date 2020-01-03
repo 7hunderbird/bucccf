@@ -1,0 +1,13 @@
+#!/bin/bash
+
+safe paths secret/snw/tbird/lab/cf
+
+certificates=$(yq read state/cf-deployment-vars.yml -j | jq | jq-path | grep -e '.certificate"' | grep -E -v -- '_certificate' | sed 's/"//g' | awk '{ gsub("[.]","/",$0); print $0 }' )
+
+for certificate in $certificates
+do
+
+    subject_common_name=$(openssl x509 -in <(bosh interpolate state/cf-deployment-vars.yml --path $certificate) -text -noout | grep -e 'Subject:' | awk '{ print $5 }')
+    san=$(openssl x509 -in <(bosh interpolate state/cf-deployment-vars.yml --path $certificate) -text -noout | awk '/X509v3 Subject Alternative Name/ {getline;gsub(/ /, "", $0); print}' | tr -d "DNS:")
+    echo $certificate $subject_common_name $san 
+done

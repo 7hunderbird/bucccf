@@ -32,13 +32,14 @@ alias jq-path="jq '[path(..)|map(if type==\"number\" then \"[]\" else tostring e
 # remove double quotes
 # substitute "[.]" with "/" to `/path/ca`
 
-certificate_authorities=$(yq read state/cf-deployment-vars.yml -j | jq | jq-path | grep -e '.ca"' | grep -E -v -- '_ca' | sed 's/"//g' | awk '{ gsub("[.]","/",$0); print $0 }' )
+certificates=$(yq read state/cf-deployment-vars.yml -j | jq | jq-path | grep -e '.certificate"' | grep -E -v -- '_certificate' | sed 's/"//g' | awk '{ gsub("[.]","/",$0); print $0 }' )
 
-for certificate_authority in $certificate_authorities
+for certificate in $certificates
 do
-    common_name=$(openssl x509 -in <(bosh interpolate state/cf-deployment-vars.yml --path $certificate_authority) -text -noout | grep -e 'Issuer:' | awk '{ print $5 }')
-    fingerprint=$(openssl x509 -noout -fingerprint -sha256 -inform pem -in <(bosh interpolate state/cf-deployment-vars.yml --path $certificate_authority))
-    echo $fingerprint $common_name $certificate_authority
+
+    subject_common_name=$(openssl x509 -in <(bosh interpolate state/cf-deployment-vars.yml --path $certificate) -text -noout | grep -e 'Subject:' | awk '{ print $5 }')
+    san=$(openssl x509 -in <(bosh interpolate state/cf-deployment-vars.yml --path $certificate) -text -noout | awk '/X509v3 Subject Alternative Name/ {getline;gsub(/ /, "", $0); print}' | tr -d "DNS:")
+    echo $certificate $subject_common_name $san 
 done
 
 # popd

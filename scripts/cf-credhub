@@ -1,0 +1,8 @@
+#!/bin/bash
+
+rm mutual_uaa_credhub
+
+bosh interpolate state/cf-deployment-vars.yml --path /uaa_ssl/ca >> mutual_uaa_credhub
+bosh interpolate state/cf-deployment-vars.yml --path /credhub_tls/ca >> mutual_uaa_credhub 
+
+credhub api --server=https://credhub.sys.10.244.0.34.netip.cc --ca-cert=mutual_uaa_credhub
